@@ -1587,7 +1587,7 @@ let macro_api ccom get_api =
 			vnull
 		);
 		"class_path", vfun0 (fun() ->
-			encode_array (List.map encode_string (ccom()).class_path);
+			encode_array (List.map (fun vd -> encode_string vd#full_path) (ccom()).class_path);
 		);
 		"resolve_path", vfun1 (fun file ->
 			let file = decode_string file in
@@ -1848,10 +1848,10 @@ let macro_api ccom get_api =
 			if com.stage <> CInitMacrosStart then
 				com.warning ("Should be used in initialization macros only: haxe.macro.Compiler.addClassPath(" ^ cp ^ ")") Globals.null_pos;
 			let cp = Path.add_trailing_slash cp in
-			com.class_path <- cp :: com.class_path;
+			com.class_path <- new Vfs.sys_directory cp None :: com.class_path;
 			(match com.get_macros() with
 			| Some(mcom) ->
-				mcom.class_path <- cp :: mcom.class_path;
+				mcom.class_path <- new Vfs.sys_directory cp None :: mcom.class_path;
 			| None ->
 				());
 			Hashtbl.clear com.file_lookup_cache;

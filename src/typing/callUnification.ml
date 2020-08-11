@@ -19,8 +19,8 @@ let relative_path ctx file =
 	let flen = String.length fpath_lower in
 	let rec loop = function
 		| [] -> file
-		| path :: l ->
-			let spath = String.lowercase (slashes path) in
+		| vd :: l ->
+			let spath = String.lowercase (slashes vd#full_path) in
 			let slen = String.length spath in
 			if slen > 0 && slen < flen && String.sub fpath_lower 0 slen = spath then String.sub fpath slen (flen - slen) else loop l
 	in

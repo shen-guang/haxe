@@ -23,6 +23,7 @@ open Type
 open Globals
 open Define
 open NativeLibraries
+open Vfs
 
 type package_rule =
 	| Forbidden
@@ -312,8 +313,8 @@ type context = {
 	mutable foptimize : bool;
 	mutable platform : platform;
 	mutable config : platform_config;
-	mutable std_path : string list;
-	mutable class_path : string list;
+	mutable std_path : vfs_directory list;
+	mutable class_path : vfs_directory list;
 	mutable main_class : path option;
 	mutable package_rules : (string,package_rule) PMap.t;
 	mutable error : string -> pos -> unit;
@@ -904,8 +905,9 @@ let find_file ctx f =
 		and is_core_api = defined ctx Define.CoreApi in
 		let rec loop had_empty = function
 			| [] when had_empty -> raise Not_found
-			| [] -> loop true [""]
-			| p :: l ->
+			| [] -> loop true [new sys_directory "" None]
+			| vd :: l ->
+				let p = vd#full_path in
 				let file = p ^ f in
 				let dir = Filename.dirname file in
 				if Hashtbl.mem ctx.readdir_cache (p,dir) then
@@ -1062,8 +1064,8 @@ let dump_context com = s_record_fields "" [
 	"args",s_list ", " (fun s -> s) com.args;
 	"debug",string_of_bool com.debug;
 	"platform",platform_name com.platform;
-	"std_path",s_list ", " (fun s -> s) com.std_path;
-	"class_path",s_list ", " (fun s -> s) com.class_path;
+	"std_path",s_list ", " (fun vd -> vd#full_path) com.std_path;
+	"class_path",s_list ", " (fun vd -> vd#full_path) com.class_path;
 	"defines",s_pmap (fun s -> s) (fun s -> s) com.defines.values;
 	"defines_signature",s_opt (fun s -> Digest.to_hex s) com.defines.defines_signature;
 ]

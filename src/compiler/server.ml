@@ -266,8 +266,9 @@ let get_changed_directories sctx (ctx : Typecore.typer) =
 					with Unix.Unix_error _ ->
 						()
 				in
-				List.iter add_dir com.class_path;
-				List.iter add_dir (Path.find_directories (platform_name com.platform) true com.class_path);
+				let paths = List.map (fun vd -> vd#full_path) com.class_path in
+				List.iter add_dir paths;
+				List.iter add_dir (Path.find_directories (platform_name com.platform) true paths);
 				ServerMessage.found_directories com "" !dirs;
 				cs#add_directories sign !dirs
 			) :: sctx.delays;
@@ -498,15 +499,16 @@ let create sctx write params =
 		ServerMessage.defines ctx.com "";
 		ServerMessage.signature ctx.com "" sign;
 		ServerMessage.display_position ctx.com "" (DisplayPosition.display_position#get);
+		let paths = List.map (fun vd -> vd#full_path) ctx.com.class_path in
 		try
-			if (Hashtbl.find sctx.class_paths sign) <> ctx.com.class_path then begin
+			if (Hashtbl.find sctx.class_paths sign) <> paths then begin
 				ServerMessage.class_paths_changed ctx.com "";
-				Hashtbl.replace sctx.class_paths sign ctx.com.class_path;
+				Hashtbl.replace sctx.class_paths sign paths;
 				cs#clear_directories sign;
 				(cs#get_context sign)#set_initialized false;
 			end;
 		with Not_found ->
-			Hashtbl.add sctx.class_paths sign ctx.com.class_path;
+			Hashtbl.add sctx.class_paths sign paths;
 			()
 	);
 	ctx.com.print <- (fun str -> write ("\x01" ^ String.concat "\x01" (ExtString.String.nsplit str "\n") ^ "\n"));

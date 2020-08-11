@@ -51,6 +51,7 @@ open Type
 open Server
 open Globals
 open Filename
+open Vfs
 
 exception Abort
 exception HelpMessage of string
@@ -148,7 +149,7 @@ let add_libs com libs =
 				if value <> "" then extra_args := value :: !extra_args;
 				acc
 		) [] lines in
-		com.class_path <- lines @ com.class_path;
+		com.class_path <- (List.map (fun s -> new sys_directory s None) lines) @ com.class_path;
 		List.rev !extra_args
 
 let run_command ctx cmd =
@@ -191,7 +192,9 @@ module Initialize = struct
 
 	let initialize_target ctx com classes =
 		let add_std dir =
-			com.class_path <- List.filter (fun s -> not (List.mem s com.std_path)) com.class_path @ List.map (fun p -> p ^ dir ^ "/_std/") com.std_path @ com.std_path
+			let l = List.filter (fun vd -> not (List.exists (fun vd' -> vd#full_path = vd'#full_path) com.std_path)) com.class_path in
+			let l = l @ (List.map (fun vd -> new sys_directory (dir ^ "/_std/") (Some vd)) com.std_path) @ com.std_path in
+			com.class_path <- l
 		in
 		match com.platform with
 			| Cross ->
@@ -400,8 +403,11 @@ let setup_common_context ctx com =
 	) (filter_messages false (fun _ -> true))));
 	com.filter_messages <- (fun predicate -> (ctx.messages <- (List.rev (filter_messages true predicate))));
 	if CompilationServer.runs() then com.run_command <- run_command ctx;
-	com.class_path <- get_std_class_paths ();
-	com.std_path <- List.filter (fun p -> ExtString.String.ends_with p "std/" || ExtString.String.ends_with p "std\\") com.class_path
+	com.class_path <- List.map (fun s -> new sys_directory s None) (get_std_class_paths ());
+	com.std_path <- List.filter (fun vd ->
+		let p = vd#full_path in
+		ExtString.String.ends_with p "std/" || ExtString.String.ends_with p "std\\"
+	) com.class_path
 
 let process_args arg_spec =
 	(* Takes a list of arg specs including some custom info, and generates a
@@ -481,7 +487,7 @@ let run_or_diagnose com f arg =
 let create_typer_context ctx native_libs =
 	let com = ctx.com in
 	ctx.setup();
-	Common.log com ("Classpath: " ^ (String.concat ";" com.class_path));
+	Common.log com ("Classpath: " ^ (String.concat ";" (List.map (fun vd -> vd#full_path) com.class_path)));
 	Common.log com ("Defines: " ^ (String.concat ";" (PMap.foldi (fun k v acc -> (match v with "1" -> k | _ -> k ^ "=" ^ v) :: acc) com.defines.Define.values [])));
 	Typecore.type_expr_ref := (fun ?(mode=MGet) ctx e with_type -> Typer.type_expr ~mode ctx e with_type);
 	List.iter (fun f -> f ()) (List.rev com.callbacks#get_before_typer_create);
@@ -771,7 +777,7 @@ try
 		), "<module> [args...]","interpret a Haxe module with command line arguments");
 		("Compilation",["-p";"--class-path"],["-cp"],Arg.String (fun path ->
 			process_libs();
-			com.class_path <- Path.add_trailing_slash path :: com.class_path
+			com.class_path <- new sys_directory (Path.add_trailing_slash path) None :: com.class_path
 		),"<path>","add a directory to find source files");
 		("Compilation",["-m";"--main"],["-main"],Arg.String (fun cl ->
 			if com.main_class <> None then raise (Arg.Bad "Multiple --main classes specified");

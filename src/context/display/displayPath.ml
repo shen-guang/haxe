@@ -33,7 +33,8 @@ module TypePathHandler = struct
 					Not_found -> p)
 			| _ -> p
 		) in
-		List.iter (fun path ->
+		List.iter (fun vd ->
+			let path = vd#full_path in
 			let dir = path ^ String.concat "/" p in
 			let r = (try Sys.readdir dir with _ -> [||]) in
 			Array.iter (fun f ->

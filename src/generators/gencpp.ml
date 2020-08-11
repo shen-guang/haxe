@@ -1284,7 +1284,8 @@ let strip_file ctx file = (match Common.defined ctx Common.Define.AbsolutePath w
    | false -> let flen = String.length file in
    (* Not quite right - should probably test is file exists *)
    try
-      List.iter (fun path ->
+      List.iter (fun vd ->
+	  	 let path = vd#full_path in
          let plen = String.length path in
          if (flen>plen && path=(String.sub file 0 plen ))
             then raise (PathFound (String.sub file plen (flen-plen)) ) )
@@ -8491,7 +8492,7 @@ let generate_source ctx =
       let cmd = ref "haxelib run hxcpp Build.xml haxe" in
       if (common_ctx.debug) then cmd := !cmd ^ " -Ddebug";
       cmd := !cmd ^ !cmd_defines;
-      cmd := List.fold_left (fun cmd path -> cmd ^ " -I\"" ^ (escape_command path) ^ "\"" ) !cmd common_ctx.class_path;
+      cmd := List.fold_left (fun cmd vd -> cmd ^ " -I\"" ^ (escape_command vd#full_path) ^ "\"" ) !cmd common_ctx.class_path;
       common_ctx.print (!cmd ^ "\n");
       if common_ctx.run_command !cmd <> 0 then failwith "Build failed";
       Sys.chdir old_dir;
