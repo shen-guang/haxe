@@ -294,6 +294,7 @@ let process_display_file com classes =
 			| [] -> None
 			| vd :: l ->
 				let c = vd#full_path in
+				let c = Path.add_trailing_slash (Path.get_real_path (if c = "" then "./" else c)) in
 				let clen = String.length c in
 				if clen < String.length spath && String.sub spath 0 clen = c then begin
 					let path = String.sub spath clen (String.length spath - clen) in
